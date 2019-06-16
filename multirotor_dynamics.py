@@ -29,25 +29,29 @@ import numpy as np
 
 class Dynamics(object):
 
-    STATE_X         = 0
-    STATE_X_DOT     = 1
-    STATE_Y         = 2
-    STATE_Y_DOT     = 3
-    STATE_Z         = 4
-    STATE_Z_DOT     = 5
-    STATE_PHI       = 6
-    STATE_PHI_DOT   = 7
-    STATE_THETA     = 8
-    STATE_THETA_DOT = 9
-    STATE_PSI       = 10
-    STATE_PSI_DOT   = 11
+    _STATE_X         = 0
+    _STATE_X_DOT     = 1
+    _STATE_Y         = 2
+    _STATE_Y_DOT     = 3
+    _STATE_Z         = 4
+    _STATE_Z_DOT     = 5
+    _STATE_PHI       = 6
+    _STATE_PHI_DOT   = 7
+    _STATE_THETA     = 8
+    _STATE_THETA_DOT = 9
+    _STATE_PSI       = 10
+    _STATE_PSI_DOT   = 11
 
      # Might want to allow G to vary based on altitude
-    G  = 9.80665 
+    _G  = 9.80665 
 
-    # bodyToInertial method optimized for body X=Y=0
+    
     def bodyZToInertial(bodyZ, rotation):
-
+        '''
+        Converts body frame to inertial frame using rotation angles
+        Optimized for body X=Y=0
+        '''
+ 
         phi   = rotation[0]
         theta = rotation[1]
         psi   = rotation[2]
@@ -65,7 +69,10 @@ class Dynamics(object):
         return bodyZ * R
 
     def inertialToBody(inertial, rotation):
-
+        '''
+        Converts inertiai frame to body frame using rotation angles
+        '''
+ 
         phi   = rotation[0]
         theta = rotation[1]
         psi   = rotation[2]
@@ -84,7 +91,9 @@ class Dynamics(object):
         return np.dot(R, inertial)
 
     def eulerToQuaternion(eulerAngles):
-    
+        '''
+        Converts Euler angles to quaternion
+        '''
         # Convenient renaming
         phi = eulerAngles[0] / 2
         the = eulerAngles[1] / 2
@@ -108,6 +117,9 @@ class Dynamics(object):
         return quaternion
 
     def __init__(self, motorCount, b, d, m, l, Ix, Iy, Iz, Jr, maxrpm):
+        '''
+        Constructor accepts motor count, physical constants from article, and maximum RPMs
+        '''
 
         self.motorCount = motorCount
         self._x = np.zeros(12)
@@ -146,28 +158,28 @@ class Dynamics(object):
     def start(self, pose, airborne=False):
         '''
         Initializes kinematic pose, with flag for whether we're airbone (helps with testing gravity).
-        pose location X,Y,Z rotation phi,theta,psi
+        pose = (location X,Y,Z rotation phi,theta,psi)
         airborne allows us to start on the ground (default) or in the air (e.g., gravity test)
         '''
 
         location, rotation = pose
 
         # Initialize state
-        self.x[Dynamics.STATE_X]         = location[0]
-        self.x[Dynamics.STATE_X_DOT]     = 0
-        self.x[Dynamics.STATE_Y]         = location[1]
-        self.x[Dynamics.STATE_Y_DOT]     = 0
-        self.x[Dynamics.STATE_Z]         = location[2]
-        self.x[Dynamics.STATE_Z_DOT]     = 0
-        self.x[Dynamics.STATE_PHI]       = rotation[0]
-        self.x[Dynamics.STATE_PHI_DOT]   = 0
-        self.x[Dynamics.STATE_THETA]     = rotation[1]
-        self.x[Dynamics.STATE_THETA_DOT] = 0
-        self.x[Dynamics.STATE_PSI]       = rotation[2]
-        self.x[Dynamics.STATE_PSI_DOT]   = 0
+        self.x[Dynamics._STATE_X]         = location[0]
+        self.x[Dynamics._STATE_X_DOT]     = 0
+        self.x[Dynamics._STATE_Y]         = location[1]
+        self.x[Dynamics._STATE_Y_DOT]     = 0
+        self.x[Dynamics._STATE_Z]         = location[2]
+        self.x[Dynamics._STATE_Z_DOT]     = 0
+        self.x[Dynamics._STATE_PHI]       = rotation[0]
+        self.x[Dynamics._STATE_PHI_DOT]   = 0
+        self.x[Dynamics._STATE_THETA]     = rotation[1]
+        self.x[Dynamics._STATE_THETA_DOT] = 0
+        self.x[Dynamics._STATE_PSI]       = rotation[2]
+        self.x[Dynamics._STATE_PSI_DOT]   = 0
 
         # Initialize inertial frame acceleration in NED coordinates
-        self.inertialAccel = Dynamics.bodyZToInertial(-Dynamics.G, rotation)
+        self.inertialAccel = Dynamics.bodyZToInertial(-Dynamics._G, rotation)
 
         # We can start on the ground (default) or in the air
         self.airborne = airborne
@@ -194,18 +206,18 @@ class Dynamics(object):
         if self.airborne:
 
             # Make some useful abbreviations
-            phidot = self.x[Dynamics.STATE_PHI_DOT]
-            thedot = self.x[Dynamics.STATE_THETA_DOT]
-            psidot = self.x[Dynamics.STATE_PSI_DOT]
+            phidot = self.x[Dynamics._STATE_PHI_DOT]
+            thedot = self.x[Dynamics._STATE_THETA_DOT]
+            psidot = self.x[Dynamics._STATE_PSI_DOT]
 
             dxdt = np.array([
 
                 # Equation 12: compute temporal first derivative of state.
-                self.x[Dynamics.STATE_X_DOT],  
+                self.x[Dynamics._STATE_X_DOT],  
                 ned[0],
-                self.x[Dynamics.STATE_Y_DOT],
+                self.x[Dynamics._STATE_Y_DOT],
                 ned[1],
-                self.x[Dynamics.STATE_Z_DOT],
+                self.x[Dynamics._STATE_Z_DOT],
                 netz,
                 phidot,
                 psidot*thedot*(self.Iy-self.Iz)/self.Ix - self.Jr/self.Ix*thedot*self.Omega + self.l/self.Ix*self.U2,
@@ -251,10 +263,10 @@ class Dynamics(object):
             crashed = True if crashed, False otherwise
         '''
         # Get most values directly from state vector
-        angularVel  = self.x[Dynamics.STATE_PHI_DOT:Dynamics.STATE_PHI_DOT+5:2]
-        inertialVel = self.x[Dynamics.STATE_X_DOT:Dynamics.STATE_X_DOT+5:2]
-        rotation    = self.x[Dynamics.STATE_PHI:Dynamics.STATE_PHI+5:2]
-        location    = self.x[Dynamics.STATE_X:Dynamics.STATE_X+5:2]
+        angularVel  = self.x[Dynamics._STATE_PHI_DOT:Dynamics._STATE_PHI_DOT+5:2]
+        inertialVel = self.x[Dynamics._STATE_X_DOT:Dynamics._STATE_X_DOT+5:2]
+        rotation    = self.x[Dynamics._STATE_PHI:Dynamics._STATE_PHI+5:2]
+        location    = self.x[Dynamics._STATE_X:Dynamics._STATE_X+5:2]
 
         # Convert inertial acceleration and velocity to body frame
         bodyAccel = Dynamics.inertialToBody(self.inertialAccel, rotation)
@@ -270,3 +282,4 @@ class Dynamics(object):
         crashed =  (location[2] > self.zstart) if self.airborne else False
 
         return pose, state, crashed
+
