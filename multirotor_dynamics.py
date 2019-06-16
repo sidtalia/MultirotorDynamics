@@ -43,80 +43,64 @@ class MultirotorDynamics(object):
      # Might want to allow G to vary based on altitude
     g  = 9.80665 
 
+    # bodyToInertial method optimized for body X=Y=0
+    def bodyZToInertial(bodyZ, rotation):
+
+        phi   = rotation[0]
+        theta = rotation[1]
+        psi   = rotation[2]
+
+        cph = np.cos(phi)
+        sph = np.sin(phi)
+        cth = np.cos(theta)
+        sth = np.sin(theta)
+        cps = np.cos(psi)
+        sps = np.sin(psi)
+
+        # This is the rightmost column of the body-to-inertial rotation matrix
+        R = np.array([sph*sps + cph*cps*sth, cph*sps*sth - cps*sph, cph*cth])
+
+        return bodyZ * R
+
     def __init(self, motorCount, b, d, m, l, Ix, Iy, Iz, Jr, maxrpm):
 
-        self.motorCount = motorCount
+            self.motorCount = motorCount
 
-        self._x = np.zeros(12)
+            self._x = np.zeros(12)
 
-        self.omegas = np.zeros(motorCount)
+            self.omegas = np.zeros(motorCount)
 
-        self.b = b
-        self.d = d
-        self.m = m
-        self.l = l
-        self.Ix = Ix
-        self.Iy = Iy
-        self.Iz = Iz
-        self.Jr = Jr
+            self.b = b
+            self.d = d
+            self.m = m
+            self.l = l
+            self.Ix = Ix
+            self.Iy = Iy
+            self.Iz = Iz
+            self.Jr = Jr
 
-        self.maxrpm = maxrpm
+            self.maxrpm = maxrpm
 
-        # Values computed in Equation 6
-        self.U1 = 0     # total thrust
-        self.U2 = 0     # roll thrust right
-        self.U3 = 0     # pitch thrust forward
-        self.U4 = 0     # yaw thrust clockwise
-        self.Omega = 0  # torque clockwise
+            # Values computed in Equation 6
+            self.U1 = 0     # total thrust
+            self.U2 = 0     # roll thrust right
+            self.U3 = 0     # pitch thrust forward
+            self.U4 = 0     # yaw thrust clockwise
+            self.Omega = 0  # torque clockwise
 
-        # Radians per second for each motor
-        self.omegas = np.zeros(motorCount)
+            # Radians per second for each motor
+            self.omegas = np.zeros(motorCount)
 
-        # Inertial-frame acceleration
-        self.inertialAccel = np.zeros(3)
+            # Inertial-frame acceleration
+            self.inertialAccel = np.zeros(3)
 
-        # Flag for whether we're airborne
-        self.airborne = False
+            # Flag for whether we're airborne
+            self.airborne = False
 
-        # Takeoff altitude, for detecting a crash
-        self.zstart = 0
-        
+            # Takeoff altitude, for detecting a crash
+            self.zstart = 0
+            
 '''
-        # y = Ax + b helper for frame-of-reference conversion methods
-        static void dot(double A[3][3], double x[3], double y[3])
-        {
-            for (uint8_t j=0 j<3 ++j) {
-                y[j] = 0
-                for (uint8_t k=0 k<3 ++k) {
-                    y[j] += A[j][k] * x[k]
-                }
-            }
-        }
-
-        # bodyToInertial method optimized for body X=Y=0
-        static void bodyZToInertial(double bodyZ, const double rotation[3], double inertial[3])
-        {
-            double phi   = rotation[0]
-            double theta = rotation[1]
-            double psi   = rotation[2]
-
-            double cph = cos(phi)
-            double sph = sin(phi)
-            double cth = cos(theta)
-            double sth = sin(theta)
-            double cps = cos(psi)
-            double sps = sin(psi)
-
-            # This is the rightmost column of the body-to-inertial rotation matrix
-            double R[3] = {sph*sps + cph*cps*sth, 
-                cph*sps*sth - cps*sph, 
-                cph*cth}
-
-            for (uint8_t i=0 i<3 ++i) {
-                inertial[i] = bodyZ * R[i]
-            }
-        }
-
     protected:
 
         # roll right
@@ -225,7 +209,7 @@ class MultirotorDynamics(object):
         /** 
          * Updates state.
          *
-         * @param dt time in seconds since previous update
+         * @param dt time in seconds np.since previous update
          */
         void update(double dt)
         {
@@ -357,12 +341,12 @@ class MultirotorDynamics(object):
             double theta = rotation[1]
             double psi   = rotation[2]
 
-            double cph = cos(phi)
-            double sph = sin(phi)
-            double cth = cos(theta)
-            double sth = sin(theta)
-            double cps = cos(psi)
-            double sps = sin(psi)
+            double cph = np.cos(phi)
+            double sph = np.sin(phi)
+            double cth = np.cos(theta)
+            double sth = np.sin(theta)
+            double cps = np.cos(psi)
+            double sps = np.sin(psi)
 
             double R[3][3] = { {cps*cth,  cps*sph*sth - cph*sps,  sph*sps + cph*cps*sth}, 
                                {cth*sps,  cph*cps + sph*sps*sth,  cph*sps*sth - cps*sph}, 
@@ -377,12 +361,12 @@ class MultirotorDynamics(object):
             double theta = rotation[1]
             double psi   = rotation[2]
 
-            double cph = cos(phi)
-            double sph = sin(phi)
-            double cth = cos(theta)
-            double sth = sin(theta)
-            double cps = cos(psi)
-            double sps = sin(psi)
+            double cph = np.cos(phi)
+            double sph = np.sin(phi)
+            double cth = np.cos(theta)
+            double sth = np.sin(theta)
+            double cps = np.cos(psi)
+            double sps = np.sin(psi)
 
             double R[3][3] = { {cps*cth,                cth*sps,                   -sth}, 
                                {cps*sph*sth - cph*sps,  cph*cps + sph*sps*sth,  cth*sph}, 
@@ -406,12 +390,12 @@ class MultirotorDynamics(object):
             double psi = eulerAngles[2] / 2
 
             # Pre-computation
-            double cph = cos(phi)
-            double cth = cos(the)
-            double cps = cos(psi)
-            double sph = sin(phi)
-            double sth = sin(the)
-            double sps = sin(psi)
+            double cph = np.cos(phi)
+            double cth = np.cos(the)
+            double cps = np.cos(psi)
+            double sph = np.sin(phi)
+            double sth = np.sin(the)
+            double sps = np.sin(psi)
 
             # Conversion
             quaternion[0] =  cph * cth * cps + sph * sth * sps
