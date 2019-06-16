@@ -7,7 +7,7 @@
      author    = {Samir Bouabdallah and Pierpaolo Murrieri and Roland Siegwart},
      title     = {Design and Control of an Indoor Micro Quadrotor},
      booktitle = {Proceedings of the 2004 {IEEE} International Conference on Robotics and 
-                    Automation, {ICRA} 2004, April 26 - May 1, 2004, New Orleans, LA, {USA}},
+                  Automation, {ICRA} 2004, April 26 - May 1, 2004, New Orleans, LA, {USA}},
       pages     = {4393--4398},
       year      = {2004},
       crossref  = {DBLP:conf/icra/2004},
@@ -25,7 +25,7 @@
 
 import numpy as np
 
-class MultirotorDynamics(object):
+class Dynamics(object):
 
     STATE_X         = 0
     STATE_X_DOT     = 1
@@ -61,6 +61,25 @@ class MultirotorDynamics(object):
         R = np.array([sph*sps + cph*cps*sth, cph*sps*sth - cps*sph, cph*cth])
 
         return bodyZ * R
+
+    def inertialToBody(inertial, rotation):
+
+        phi   = rotation[0]
+        theta = rotation[1]
+        psi   = rotation[2]
+
+        cph = np.cos(phi)
+        sph = np.sin(phi)
+        cth = np.cos(theta)
+        sth = np.sin(theta)
+        cps = np.cos(psi)
+        sps = np.sin(psi)
+
+        R = np.array([[cps*cth,                cth*sps,                   -sth], 
+                      [cps*sph*sth - cph*sps,  cph*cps + sph*sps*sth,  cth*sph], 
+                      [sph*sps + cph*cps*sth,  cph*sps*sth - cps*sph,  cph*cth]])
+
+        return np.dot(R, inertial)
 
     def __init__(self, motorCount, b, d, m, l, Ix, Iy, Iz, Jr, maxrpm):
 
@@ -108,21 +127,21 @@ class MultirotorDynamics(object):
         location, rotation = pose
 
         # Initialize state
-        self.x[MultirotorDynamics.STATE_X]         = location[0]
-        self.x[MultirotorDynamics.STATE_X_DOT]     = 0
-        self.x[MultirotorDynamics.STATE_Y]         = location[1]
-        self.x[MultirotorDynamics.STATE_Y_DOT]     = 0
-        self.x[MultirotorDynamics.STATE_Z]         = location[2]
-        self.x[MultirotorDynamics.STATE_Z_DOT]     = 0
-        self.x[MultirotorDynamics.STATE_PHI]       = rotation[0]
-        self.x[MultirotorDynamics.STATE_PHI_DOT]   = 0
-        self.x[MultirotorDynamics.STATE_THETA]     = rotation[1]
-        self.x[MultirotorDynamics.STATE_THETA_DOT] = 0
-        self.x[MultirotorDynamics.STATE_PSI]       = rotation[2]
-        self.x[MultirotorDynamics.STATE_PSI_DOT]   = 0
+        self.x[Dynamics.STATE_X]         = location[0]
+        self.x[Dynamics.STATE_X_DOT]     = 0
+        self.x[Dynamics.STATE_Y]         = location[1]
+        self.x[Dynamics.STATE_Y_DOT]     = 0
+        self.x[Dynamics.STATE_Z]         = location[2]
+        self.x[Dynamics.STATE_Z_DOT]     = 0
+        self.x[Dynamics.STATE_PHI]       = rotation[0]
+        self.x[Dynamics.STATE_PHI_DOT]   = 0
+        self.x[Dynamics.STATE_THETA]     = rotation[1]
+        self.x[Dynamics.STATE_THETA_DOT] = 0
+        self.x[Dynamics.STATE_PSI]       = rotation[2]
+        self.x[Dynamics.STATE_PSI_DOT]   = 0
 
         # Initialize inertial frame acceleration in NED coordinates
-        self.inertialAccel = MultirotorDynamics.bodyZToInertial(-MultirotorDynamics.G, rotation)
+        self.inertialAccel = Dynamics.bodyZToInertial(-Dynamics.G, rotation)
 
         # We can start on the ground (default) or in the air
         self.airborne = airborne
@@ -138,10 +157,10 @@ class MultirotorDynamics(object):
         # Use the current Euler angles to rotate the orthogonal thrust vector into the inertial frame.
         # Negate to use NED.
         euler = np.array([self.x[6], self.x[8], self.x[10]])
-        ned = MultirotorDynamics.bodyZToInertial(-self.U1/self.m, euler)
+        ned = Dynamics.bodyZToInertial(-self.U1/self.m, euler)
 
         # We're airborne once net downward acceleration goes below zero
-        netz = ned[2] + MultirotorDynamics.g
+        netz = ned[2] + Dynamics.g
         if not self.airborne:
             self.airborne = netz < 0
 
@@ -149,18 +168,18 @@ class MultirotorDynamics(object):
         if self.airborne:
 
             # Make some useful abbreviations
-            phidot = self.x[MultirotorDynamics.STATE_PHI_DOT]
-            thedot = self.x[MultirotorDynamics.STATE_THETA_DOT]
-            psidot = self.x[MultirotorDynamics.STATE_PSI_DOT]
+            phidot = self.x[Dynamics.STATE_PHI_DOT]
+            thedot = self.x[Dynamics.STATE_THETA_DOT]
+            psidot = self.x[Dynamics.STATE_PSI_DOT]
 
             dxdt = np.array([
 
                 # Equation 12: compute temporal first derivative of state.
-                self.x[MultirotorDynamics.STATE_X_DOT],  
+                self.x[Dynamics.STATE_X_DOT],  
                 ned[0],
-                self.x[MultirotorDynamics.STATE_Y_DOT],
+                self.x[Dynamics.STATE_Y_DOT],
                 ned[1],
-                self.x[MultirotorDynamics.STATE_Z_DOT],
+                self.x[Dynamics.STATE_Z_DOT],
                 netz,
                 phidot,
                 psidot*thedot*(self.Iy-self.Iz)/self.Ix - self.Jr/self.Ix*thedot*self.Omega + self.l/self.Ix*self.U2,
@@ -197,17 +216,46 @@ class MultirotorDynamics(object):
         self.U3 = self.b * self.u3(self.omegas)
         self.U4 = self.d * self.u4(self.omegas)
 
-'''
+    def getState(self):
+        '''
+        Gets current state
+        Returns (pose, state, crashed), where:
+            pose  = (location, rotation) 
+            state = (angularVel, bodyAccel, inertialVel, quaternion)
+            crashed = True if crashed, False otherwise
+        '''
+        # Get most values directly from state vector
+        angularVel  = self.x[Dynamics.STATE_PHI_DOT:Dynamics.STATE_PHI_DOT+5:2]
+        inertialVel = self.x[Dynamics.STATE_X_DOT:Dynamics.STATE_X_DOT+5:2]
+        rotation    = self.x[Dynamics.STATE_PHI:Dynamics.STATE_PHI+5:2]
+        location    = self.x[Dynamics.STATE_X:Dynamics.STATE_X+5:2]
+
+        # Convert inertial acceleration and velocity to body frame
+        bodyAccel = Dynamics.inertialToBody(self.inertialAccel, rotation)
+
+        # Convert Euler angles to quaternion
+        quaternion = Dynamics.eulerToQuaternion(rotation)
+
+        # Make pose and state tuples
+        pose  = location, rotation
+        state = angularVel, bodyAccel, inertialVel, quaternion
+
+        # If we're airborne, we've crashed if we fall below ground level
+        crashed =  (location[2] > self.zstart) if self.airborne else False
+
+        return pose, state, crashed
+
+    '''
     protected:
 
         # roll right
-        virtual double u2(double * o) = 0
+        virtual u2(* o) = 0
 
         # pitch forward
-        virtual double u3(double * o) = 0
+        virtual u3(* o) = 0
 
         # yaw cw
-        virtual double u4(double * o) = 0
+        virtual u4(* o) = 0
 
         # motor direction for animation
         virtual int8_t motorDirection(uint8_t i) = 0
@@ -221,18 +269,17 @@ class MultirotorDynamics(object):
         # Kinematics
         typedef struct {
 
-            double location[3]
-            double rotation[3] 
+            location[3]
+            rotation[3] 
 
         } pose_t
 
         typedef struct {
 
-            double angularVel[3] 
-            double bodyAccel[3] 
-            double bodyVel[3] 
-            double inertialVel[3] 
-            double quaternion[4] 
+            angularVel[3] 
+            bodyAccel[3] 
+            inertialVel[3] 
+            quaternion[4] 
 
             pose_t pose
 
@@ -241,41 +288,12 @@ class MultirotorDynamics(object):
         /**
          *  Destructor
          */
-        virtual ~MultirotorDynamics(void)
+        virtual ~Dynamics(void)
         {
             delete _omegas
         }
 
        }
-
-        /*
-         *  Gets current state
-         *
-         *  @param state data structure for state
-         *
-         *  @return true if crashed, false otherwise
-         */
-        bool getState(state_t & state)
-        {
-
-            # Get most values directly from state vector
-            for (uint8_t i=0 i<3 ++i) {
-                uint8_t ii = 2 * i
-                state.angularVel[i]    = _x[STATE_PHI_DOT+ii]
-                state.inertialVel[i]   = _x[STATE_X_DOT+ii]
-                state.pose.rotation[i] = _x[STATE_PHI+ii]
-                state.pose.location[i] = _x[STATE_X+ii]
-            }
-
-            # Convert inertial acceleration and velocity to body frame
-            inertialToBody(_inertialAccel, state.pose.rotation, state.bodyAccel)
-
-            # Convert Euler angles to quaternion
-            eulerToQuaternion(state.pose.rotation, state.quaternion)
-
-            # If we're airborne, we've crashed if we fall below ground level
-            return self.airborne ? (state.pose.location[2] > _zstart) : false
-        }
 
         /**
          *  Supports debugging
@@ -293,45 +311,7 @@ class MultirotorDynamics(object):
          *  See Section 5 of http:#www.chrobotics.com/library/understanding-euler-angles
          */
 
-        static void bodyToInertial(double body[3], const double rotation[3], double inertial[3])
-        {
-            double phi   = rotation[0]
-            double theta = rotation[1]
-            double psi   = rotation[2]
-
-            double cph = np.cos(phi)
-            double sph = np.sin(phi)
-            double cth = np.cos(theta)
-            double sth = np.sin(theta)
-            double cps = np.cos(psi)
-            double sps = np.sin(psi)
-
-            double R[3][3] = { {cps*cth,  cps*sph*sth - cph*sps,  sph*sps + cph*cps*sth}, 
-                               {cth*sps,  cph*cps + sph*sps*sth,  cph*sps*sth - cps*sph}, 
-                               {-sth,     cth*sph,                cph*cth}               }
-
-            dot(R, body, inertial)
-        }
-
-        static void inertialToBody(double inertial[3], const double rotation[3], double body[3])
-        {
-            double phi   = rotation[0]
-            double theta = rotation[1]
-            double psi   = rotation[2]
-
-            double cph = np.cos(phi)
-            double sph = np.sin(phi)
-            double cth = np.cos(theta)
-            double sth = np.sin(theta)
-            double cps = np.cos(psi)
-            double sps = np.sin(psi)
-
-            double R[3][3] = { {cps*cth,                cth*sps,                   -sth}, 
-                               {cps*sph*sth - cph*sps,  cph*cps + sph*sps*sth,  cth*sph}, 
-                               {sph*sps + cph*cps*sth,  cph*sps*sth - cps*sph,  cph*cth} }
-
-            dot(R, inertial, body)
-        }
+       }
 
         /**
          * Converts Euler angles to quaterion.
@@ -340,20 +320,20 @@ class MultirotorDynamics(object):
          * @param quaternion output
          */
 
-        static void eulerToQuaternion(const double eulerAngles[3], double quaternion[4])
+        static void eulerToQuaternion(const eulerAngles[3], quaternion[4])
         {
             # Convenient renaming
-            double phi = eulerAngles[0] / 2
-            double the = eulerAngles[1] / 2
-            double psi = eulerAngles[2] / 2
+            phi = eulerAngles[0] / 2
+            the = eulerAngles[1] / 2
+            psi = eulerAngles[2] / 2
 
             # Pre-computation
-            double cph = np.cos(phi)
-            double cth = np.cos(the)
-            double cps = np.cos(psi)
-            double sph = np.sin(phi)
-            double sth = np.sin(the)
-            double sps = np.sin(psi)
+            cph = np.cos(phi)
+            cth = np.cos(the)
+            cps = np.cos(psi)
+            sph = np.sin(phi)
+            sth = np.sin(the)
+            sps = np.sin(psi)
 
             # Conversion
             quaternion[0] =  cph * cth * cps + sph * sth * sps
@@ -373,7 +353,7 @@ class MultirotorDynamics(object):
         /**
          * Factory method
          */
-        static MultirotorDynamics * create(void)
+        static Dynamics * create(void)
 
-} # class MultirotorDynamics
+} # class Dynamics
 '''
