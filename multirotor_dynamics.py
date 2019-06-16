@@ -41,7 +41,7 @@ class MultirotorDynamics(object):
     STATE_PSI_DOT   = 11
 
      # Might want to allow G to vary based on altitude
-    g  = 9.80665 
+    G  = 9.80665 
 
     # bodyToInertial method optimized for body X=Y=0
     def bodyZToInertial(bodyZ, rotation):
@@ -62,44 +62,74 @@ class MultirotorDynamics(object):
 
         return bodyZ * R
 
-    def __init(self, motorCount, b, d, m, l, Ix, Iy, Iz, Jr, maxrpm):
+    def __init__(self, motorCount, b, d, m, l, Ix, Iy, Iz, Jr, maxrpm):
 
-            self.motorCount = motorCount
+        self.motorCount = motorCount
+        self._x = np.zeros(12)
+        self.omegas = np.zeros(motorCount)
 
-            self._x = np.zeros(12)
+        self.b = b
+        self.d = d
+        self.m = m
+        self.l = l
+        self.Ix = Ix
+        self.Iy = Iy
+        self.Iz = Iz
+        self.Jr = Jr
 
-            self.omegas = np.zeros(motorCount)
+        self.maxrpm = maxrpm
 
-            self.b = b
-            self.d = d
-            self.m = m
-            self.l = l
-            self.Ix = Ix
-            self.Iy = Iy
-            self.Iz = Iz
-            self.Jr = Jr
+        # Values computed in Equation 6
+        self.U1 = 0     # total thrust
+        self.U2 = 0     # roll thrust right
+        self.U3 = 0     # pitch thrust forward
+        self.U4 = 0     # yaw thrust clockwise
+        self.Omega = 0  # torque clockwise
 
-            self.maxrpm = maxrpm
+        # Radians per second for each motor
+        self.omegas = np.zeros(motorCount)
 
-            # Values computed in Equation 6
-            self.U1 = 0     # total thrust
-            self.U2 = 0     # roll thrust right
-            self.U3 = 0     # pitch thrust forward
-            self.U4 = 0     # yaw thrust clockwise
-            self.Omega = 0  # torque clockwise
+        # Inertial-frame acceleration
+        self.inertialAccel = np.zeros(3)
 
-            # Radians per second for each motor
-            self.omegas = np.zeros(motorCount)
+        # Flag for whether we're airborne
+        self.airborne = False
 
-            # Inertial-frame acceleration
-            self.inertialAccel = np.zeros(3)
+        # Takeoff altitude, for detecting a crash
+        self.zstart = 0
+        
+    def start(self, pose, airborne=False):
+        '''
+        Initializes kinematic pose, with flag for whether we're airbone (helps with testing gravity).
+        pose location X,Y,Z rotation phi,theta,psi
+        airborne allows us to start on the ground (default) or in the air (e.g., gravity test)
+        '''
 
-            # Flag for whether we're airborne
-            self.airborne = False
+        location, rotation = pose
 
-            # Takeoff altitude, for detecting a crash
-            self.zstart = 0
-            
+        # Initialize state
+        self.x[MultirotorDynamics.STATE_X]         = location[0]
+        self.x[MultirotorDynamics.STATE_X_DOT]     = 0
+        self.x[MultirotorDynamics.STATE_Y]         = location[1]
+        self.x[MultirotorDynamics.STATE_Y_DOT]     = 0
+        self.x[MultirotorDynamics.STATE_Z]         = location[2]
+        self.x[MultirotorDynamics.STATE_Z_DOT]     = 0
+        self.x[MultirotorDynamics.STATE_PHI]       = rotation[0]
+        self.x[MultirotorDynamics.STATE_PHI_DOT]   = 0
+        self.x[MultirotorDynamics.STATE_THETA]     = rotation[1]
+        self.x[MultirotorDynamics.STATE_THETA_DOT] = 0
+        self.x[MultirotorDynamics.STATE_PSI]       = rotation[2]
+        self.x[MultirotorDynamics.STATE_PSI_DOT]   = 0
+
+        # Initialize inertial frame acceleration in NED coordinates
+        self.inertialAccel = MultirotorDynamics.bodyZToInertial(-MultirotorDynamics.G, rotation)
+
+        # We can start on the ground (default) or in the air
+        self.airborne = airborne
+
+        # Remember our altitude at takeoff
+        self.zstart = pose.location[2]
+
 '''
     protected:
 
@@ -114,31 +144,6 @@ class MultirotorDynamics(object):
 
         # motor direction for animation
         virtual int8_t motorDirection(uint8_t i) = 0
-
-         /**
-         *  Constructor
-         */
-        MultirotorDynamics(const params_t & params, const uint8_t motorCount)
-        {
-            _motorCount = motorCount
-
-            _omegas = new double[motorCount]
-
-            _p.b = params.b
-            _p.d = params.d
-            _p.m = params.m
-            _p.l = params.l
-            _p.Ix = params.Ix
-            _p.Iy = params.Iy
-            _p.Iz = params.Iz
-            _p.Jr = params.Jr
-
-            _p.maxrpm = params.maxrpm
-
-            for (uint8_t i=0 i<12 ++i) {
-                _x[i] = 0
-            }
-        }
 
     public:
 
@@ -174,37 +179,7 @@ class MultirotorDynamics(object):
             delete _omegas
         }
 
-        /** 
-         * Initializes kinematic pose, with flag for whether we're airbone (helps with testing gravity).
-         *
-         * @param pose location X,Y,Z rotation phi,theta,psi
-         * @param airborne allows us to start on the ground (default) or in the air (e.g., gravity test)
-         */
-        void init(const pose_t & pose, bool airborne=false)
-        {
-            # Initialize state
-            _x[STATE_X]         = pose.location[0]
-            _x[STATE_X_DOT]     = 0
-            _x[STATE_Y]         = pose.location[1]
-            _x[STATE_Y_DOT]     = 0
-            _x[STATE_Z]         = pose.location[2]
-            _x[STATE_Z_DOT]     = 0
-            _x[STATE_PHI]       = pose.rotation[0]
-            _x[STATE_PHI_DOT]   = 0
-            _x[STATE_THETA]     = pose.rotation[1]
-            _x[STATE_THETA_DOT] = 0
-            _x[STATE_PSI]       = pose.rotation[2]
-            _x[STATE_PSI_DOT]   = 0
-
-            # Initialize inertial frame acceleration in NED coordinates
-            bodyZToInertial(-g, pose.rotation, _inertialAccel)
-
-            # We can start on the ground (default) or in the air
-            _airborne = airborne
-
-            # Remember our altitude at takeoff
-            _zstart = pose.location[2]
-        }
+       }
 
         /** 
          * Updates state.
