@@ -176,6 +176,27 @@ class MultirotorDynamics(object):
             # Once airborne, inertial-frame acceleration is same as NED acceleration
             self.inertialAccel = np.copy(ned)
 
+    def setMotors(self, motorvals):
+        '''
+        Uses motor values to implement Equation 6.
+        motorvals in interval [0,1]
+        '''
+    
+        # Convert the  motor values to radians per second
+        self.omegas = motorvals * self.maxrpm * np.pi / 30
+
+        # Compute overall torque from omegas before squaring
+        self.Omega = self.u4(self.omegas)
+
+        # Overall thrust is sum of squared omegas
+        self.omegas = self.omegas ** 2
+        self.U1 = self.b * self.omegas
+
+        # Use the squared Omegas to implement the rest of Eqn. 6
+        self.U2 = self.b * self.u2(self.omegas)
+        self.U3 = self.b * self.u3(self.omegas)
+        self.U4 = self.d * self.u4(self.omegas)
+
 '''
     protected:
 
@@ -226,34 +247,6 @@ class MultirotorDynamics(object):
         }
 
        }
-
-        /**
-         * Uses motor values to implement Equation 6.
-         *
-         * @param motorvals in interval [0,1]
-         */
-        void setMotors(double * motorvals) 
-        {
-            # Convert the  motor values to radians per second
-            for (unsigned int i=0 i<_motorCount ++i) {
-                _omegas[i] = motorvals[i] * _p.maxrpm * pi / 30
-            }
-
-            # Compute overall torque from omegas before squaring
-            _Omega = u4(_omegas)
-
-            # Overall thrust is sum of squared omegas
-            _U1 = 0
-            for (unsigned int i=0 i<_motorCount ++i) {
-                _omegas[i] *= _omegas[i]
-                _U1 +=  _p.b * _omegas[i]
-            }
-
-            # Use the squared Omegas to implement the rest of Eqn. 6
-            _U2 = _p.b * u2(_omegas)
-            _U3 = _p.b * u3(_omegas)
-            _U4 = _p.d * u4(_omegas)
-        }
 
         /*
          *  Gets current state
