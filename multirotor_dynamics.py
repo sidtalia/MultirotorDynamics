@@ -130,6 +130,52 @@ class MultirotorDynamics(object):
         # Remember our altitude at takeoff
         self.zstart = pose.location[2]
 
+    def update(self, dt):
+        '''
+        Updates state.
+        dt time in seconds np.since previous update
+        '''
+        # Use the current Euler angles to rotate the orthogonal thrust vector into the inertial frame.
+        # Negate to use NED.
+        euler = np.array([self.x[6], self.x[8], self.x[10]])
+        ned = MultirotorDynamics.bodyZToInertial(-self.U1/self.m, euler)
+
+        # We're airborne once net downward acceleration goes below zero
+        netz = ned[2] + MultirotorDynamics.g
+        if not self.airborne:
+            self.airborne = netz < 0
+
+        # Once airborne, we can update dynamics
+        if self.airborne:
+
+            # Make some useful abbreviations
+            phidot = self.x[MultirotorDynamics.STATE_PHI_DOT]
+            thedot = self.x[MultirotorDynamics.STATE_THETA_DOT]
+            psidot = self.x[MultirotorDynamics.STATE_PSI_DOT]
+
+            dxdt = np.array([
+
+                # Equation 12: compute temporal first derivative of state.
+                self.x[MultirotorDynamics.STATE_X_DOT],  
+                ned[0],
+                self.x[MultirotorDynamics.STATE_Y_DOT],
+                ned[1],
+                self.x[MultirotorDynamics.STATE_Z_DOT],
+                netz,
+                phidot,
+                psidot*thedot*(self.Iy-self.Iz)/self.Ix - self.Jr/self.Ix*thedot*self.Omega + self.l/self.Ix*self.U2,
+                thedot,
+                -(psidot*phidot*(self.Iz-self.Ix)/self.Iy + self.Jr/self.Iy*phidot*self.Omega + self.l/self.Iy*self.U3), 
+                psidot,
+                thedot*phidot*(self.Ix-self.Iy)/self.Iz   + self.l/self.Iz*self.U4
+           ]) 
+
+            # Compute state as first temporal integral of first temporal derivative
+            self.x += dt * dxdt
+
+            # Once airborne, inertial-frame acceleration is same as NED acceleration
+            self.inertialAccel = np.copy(ned)
+
 '''
     protected:
 
@@ -180,62 +226,6 @@ class MultirotorDynamics(object):
         }
 
        }
-
-        /** 
-         * Updates state.
-         *
-         * @param dt time in seconds np.since previous update
-         */
-        void update(double dt)
-        {
-            # Use the current Euler angles to rotate the orthogonal thrust vector into the inertial frame.
-            # Negate to use NED.
-            double euler[3] = { _x[6], _x[8], _x[10] }
-            double ned[3] = {0}
-            bodyZToInertial(-_U1/_p.m, euler, ned)
-
-            # We're airborne once net downward acceleration goes below zero
-            double netz = ned[2] + g
-            if (!_airborne) {
-                _airborne = netz < 0
-            }
-
-            # Once airborne, we can update dynamics
-            if (_airborne) {
-
-                # Make some useful abbreviations
-                double phidot = _x[STATE_PHI_DOT]
-                double thedot = _x[STATE_THETA_DOT]
-                double psidot = _x[STATE_PSI_DOT]
-
-                double dxdt[12] = {
-
-                    # Equation 12: compute temporal first derivative of state.
-                    /* x'      */ _x[STATE_X_DOT],
-                    /* x''     */ ned[0],
-                    /* y'      */ _x[STATE_Y_DOT],
-                    /* y''     */ ned[1],
-                    /* z'      */ _x[STATE_Z_DOT],
-                    /* z''     */ netz,
-                    /* phi'    */ phidot,
-                    /* phi''   */ psidot*thedot*(_p.Iy-_p.Iz)/_p.Ix - _p.Jr/_p.Ix*thedot*_Omega + _p.l/_p.Ix*_U2,
-                    /* theta'  */ thedot,
-                    /* theta'' */ -(psidot*phidot*(_p.Iz-_p.Ix)/_p.Iy + _p.Jr/_p.Iy*phidot*_Omega + _p.l/_p.Iy*_U3), 
-                    /* psi'    */ psidot,
-                    /* psi''   */ thedot*phidot*(_p.Ix-_p.Iy)/_p.Iz   + _p.l/_p.Iz*_U4,
-                }
-
-                # Compute state as first temporal integral of first temporal derivative
-                for (uint8_t i=0 i<12 ++i) {
-                    _x[i] += dt * dxdt[i]
-                }
-
-                # Once airborne, inertial-frame acceleration is same as NED acceleration
-                _inertialAccel[0] = ned[0]
-                _inertialAccel[1] = ned[1]
-                _inertialAccel[2] = ned[2]
-            }
-        }
 
         /**
          * Uses motor values to implement Equation 6.
@@ -291,7 +281,7 @@ class MultirotorDynamics(object):
             eulerToQuaternion(state.pose.rotation, state.quaternion)
 
             # If we're airborne, we've crashed if we fall below ground level
-            return _airborne ? (state.pose.location[2] > _zstart) : false
+            return self.airborne ? (state.pose.location[2] > _zstart) : false
         }
 
         /**
