@@ -1,6 +1,8 @@
 '''
-  Python class for multirotor dynamics
- 
+  Abstract Python class for multirotor dynamics
+
+  You implementing class should define the methods u2(), u3(), u4()
+
   Based on:
 
    @inproceedings{DBLP:conf/icra/BouabdallahMS04,
@@ -81,6 +83,30 @@ class Dynamics(object):
 
         return np.dot(R, inertial)
 
+    def eulerToQuaternion(eulerAngles):
+    
+        # Convenient renaming
+        phi = eulerAngles[0] / 2
+        the = eulerAngles[1] / 2
+        psi = eulerAngles[2] / 2
+
+        # Pre-computation
+        cph = np.cos(phi)
+        cth = np.cos(the)
+        cps = np.cos(psi)
+        sph = np.sin(phi)
+        sth = np.sin(the)
+        sps = np.sin(psi)
+
+        # Conversion
+        quaternion =  (
+                cph * cth * cps + sph * sth * sps,
+                cph * sth * sps - sph * cth * cps, 
+                -cph * sth * cps - sph * cth * sps,
+                cph * cth * sps - sph * sth * cps)
+
+        return quaternion
+
     def __init__(self, motorCount, b, d, m, l, Ix, Iy, Iz, Jr, maxrpm):
 
         self.motorCount = motorCount
@@ -116,7 +142,7 @@ class Dynamics(object):
 
         # Takeoff altitude, for detecting a crash
         self.zstart = 0
-        
+
     def start(self, pose, airborne=False):
         '''
         Initializes kinematic pose, with flag for whether we're airbone (helps with testing gravity).
@@ -244,116 +270,3 @@ class Dynamics(object):
         crashed =  (location[2] > self.zstart) if self.airborne else False
 
         return pose, state, crashed
-
-    '''
-    protected:
-
-        # roll right
-        virtual u2(* o) = 0
-
-        # pitch forward
-        virtual u3(* o) = 0
-
-        # yaw cw
-        virtual u4(* o) = 0
-
-        # motor direction for animation
-        virtual int8_t motorDirection(uint8_t i) = 0
-
-    public:
-
-        /**
-         * Exported state representations
-         */
-
-        # Kinematics
-        typedef struct {
-
-            location[3]
-            rotation[3] 
-
-        } pose_t
-
-        typedef struct {
-
-            angularVel[3] 
-            bodyAccel[3] 
-            inertialVel[3] 
-            quaternion[4] 
-
-            pose_t pose
-
-        } state_t
-
-        /**
-         *  Destructor
-         */
-        virtual ~Dynamics(void)
-        {
-            delete _omegas
-        }
-
-       }
-
-        /**
-         *  Supports debugging
-         *
-         * @return message string that can be displayed by calling program (e.g., FlightManager)
-         */
-        char * getMessage(void)
-        {
-            return _message
-        }
-
-        /**
-         *  Frame-of-reference conversion routines.
-         *
-         *  See Section 5 of http:#www.chrobotics.com/library/understanding-euler-angles
-         */
-
-       }
-
-        /**
-         * Converts Euler angles to quaterion.
-         *
-         * @param eulerAngles input
-         * @param quaternion output
-         */
-
-        static void eulerToQuaternion(const eulerAngles[3], quaternion[4])
-        {
-            # Convenient renaming
-            phi = eulerAngles[0] / 2
-            the = eulerAngles[1] / 2
-            psi = eulerAngles[2] / 2
-
-            # Pre-computation
-            cph = np.cos(phi)
-            cth = np.cos(the)
-            cps = np.cos(psi)
-            sph = np.sin(phi)
-            sth = np.sin(the)
-            sps = np.sin(psi)
-
-            # Conversion
-            quaternion[0] =  cph * cth * cps + sph * sth * sps
-            quaternion[1] =  cph * sth * sps - sph * cth * cps 
-            quaternion[2] = -cph * sth * cps - sph * cth * sps
-            quaternion[3] =  cph * cth * sps - sph * sth * cps
-        }
-
-        /**
-         * Accessor method
-         */
-        uint8_t motorCount(void)
-        {
-            return _motorCount
-        }
-
-        /**
-         * Factory method
-         */
-        static Dynamics * create(void)
-
-} # class Dynamics
-'''
