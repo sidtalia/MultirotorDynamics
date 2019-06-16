@@ -71,6 +71,8 @@ class Dynamics(object):
     def inertialToBody(inertial, rotation):
         '''
         Converts inertiai frame to body frame using rotation angles
+
+        See Section 5 of http://www.chrobotics.com/library/understanding-euler-angles
         '''
  
         phi   = rotation[0]
@@ -93,6 +95,8 @@ class Dynamics(object):
     def eulerToQuaternion(eulerAngles):
         '''
         Converts Euler angles to quaternion
+
+        See https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
         '''
         # Convenient renaming
         phi = eulerAngles[0] / 2
@@ -108,13 +112,11 @@ class Dynamics(object):
         sps = np.sin(psi)
 
         # Conversion
-        quaternion =  (
+        return (
                 cph * cth * cps + sph * sth * sps,
                 cph * sth * sps - sph * cth * cps, 
                 -cph * sth * cps - sph * cth * sps,
                 cph * cth * sps - sph * sth * cps)
-
-        return quaternion
 
     def __init__(self, motorCount, b, d, m, l, Ix, Iy, Iz, Jr, maxrpm):
         '''
@@ -122,7 +124,7 @@ class Dynamics(object):
         '''
 
         self.motorCount = motorCount
-        self._x = np.zeros(12)
+        self.x = np.zeros(12)
         self.omegas = np.zeros(motorCount)
 
         self.b = b
@@ -190,7 +192,7 @@ class Dynamics(object):
     def update(self, dt):
         '''
         Updates state.
-        dt time in seconds np.since previous update
+        dt time in seconds since previous update
         '''
         # Use the current Euler angles to rotate the orthogonal thrust vector into the inertial frame.
         # Negate to use NED.
@@ -282,4 +284,3 @@ class Dynamics(object):
         crashed =  (location[2] > self.zstart) if self.airborne else False
 
         return pose, state, crashed
-
