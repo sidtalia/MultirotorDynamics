@@ -1,4 +1,5 @@
 '''
+
   Simple demo of multirotor dynamics Quad-X layout with ArduPilot
   motor-numbering convention:
 
@@ -11,7 +12,10 @@
    Copyright (C) 2019 Simon D. Levy
  
   MIT License
+
 '''
+
+from multirotor_dynamics import Dynamics
 
 if __name__ == '__main__':
 
