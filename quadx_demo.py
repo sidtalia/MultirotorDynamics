@@ -58,3 +58,5 @@ if __name__ == '__main__':
     maxrpm = 15000
 
     quad = QuadXAP(b, d, m, l, Ix, Iy, Iz, Jr, maxrpm)
+
+    quad.start((0,0,0), (0,0,0))

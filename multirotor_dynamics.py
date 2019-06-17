@@ -157,14 +157,13 @@ class Dynamics(object):
         # Takeoff altitude, for detecting a crash
         self.zstart = 0
 
-    def start(self, pose, airborne=False):
+    def start(self, location, rotation, airborne=False):
         '''
         Initializes kinematic pose, with flag for whether we're airbone (helps with testing gravity).
-        pose = (location X,Y,Z rotation phi,theta,psi)
+        location = X,Y,Z
+        rotation = phi, theta, psi
         airborne allows us to start on the ground (default) or in the air (e.g., gravity test)
         '''
-
-        location, rotation = pose
 
         # Initialize state
         self.x[Dynamics._STATE_X]         = location[0]
@@ -187,7 +186,7 @@ class Dynamics(object):
         self.airborne = airborne
 
         # Remember our altitude at takeoff
-        self.zstart = pose.location[2]
+        self.zstart = location[2]
 
     def update(self, dt):
         '''
@@ -259,8 +258,7 @@ class Dynamics(object):
     def getState(self):
         '''
         Gets current state
-        Returns (pose, state, crashed), where:
-            pose  = (location, rotation) 
+        Returns (location, rotation, state, crashed), where:
             state = (angularVel, bodyAccel, inertialVel, quaternion)
             crashed = True if crashed, False otherwise
         '''
@@ -277,10 +275,9 @@ class Dynamics(object):
         quaternion = Dynamics.eulerToQuaternion(rotation)
 
         # Make pose and state tuples
-        pose  = location, rotation
         state = angularVel, bodyAccel, inertialVel, quaternion
 
         # If we're airborne, we've crashed if we fall below ground level
         crashed =  (location[2] > self.zstart) if self.airborne else False
 
-        return pose, state, crashed
+        return location, rotation, state, crashed
