@@ -74,10 +74,10 @@ if __name__ == '__main__':
 
         quad.update(DT)
 
-        location, rotation, state, crashed = quad.getState()
+        location, _, state, crashed = quad.getState()
 
         qz = location[2]
-        angularVel, bodyAccel, inertialVel, quaternion = state
+        _, _, inertialVel, _ = state
         qdzdt = inertialVel[2]
 
         print(qz, qdzdt)
