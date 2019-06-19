@@ -66,6 +66,8 @@ if __name__ == '__main__':
 
         quad.update(DT)
 
+        location, rotation, state, crashed = quad.getState()
+
         # If altitude has leveled off, halt
         if abs(z-zprev) < .0000001:
             break

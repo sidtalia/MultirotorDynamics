@@ -268,10 +268,10 @@ class Dynamics(object):
         location    = self.x[self._STATE_X:self._STATE_X+5:2]
 
         # Convert inertial acceleration and velocity to body frame
-        bodyAccel = self.inertialToBody(self.inertialAccel, rotation)
+        bodyAccel = Dynamics.inertialToBody(self.inertialAccel, rotation)
 
         # Convert Euler angles to quaternion
-        quaternion = self.eulerToQuaternion(rotation)
+        quaternion = Dynamics.eulerToQuaternion(rotation)
 
         # Make pose and state tuples
         state = angularVel, bodyAccel, inertialVel, quaternion
