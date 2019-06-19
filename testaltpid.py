@@ -10,6 +10,7 @@ MIT License
 import numpy as np
 import matplotlib.pyplot as plt
 from althold import AltitudePidController
+from bigquad import BigQuad
 
 # Can't touch this!
 G = 9.80665
