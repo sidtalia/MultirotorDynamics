@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
     quad = BigQuad()
 
-    quad.start((0,0,ALTITUDE_START), (0,0,0))
+    quad.start((0,0,ALTITUDE_START), (0,0,0), airborne=True)
 
     while True:
 
