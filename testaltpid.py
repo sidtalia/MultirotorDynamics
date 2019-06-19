@@ -51,6 +51,11 @@ if __name__ == '__main__':
     VEL_I = 1.0
     VEL_D = 0.05
 
+    Q_ALT_P = 5.00
+    Q_VEL_P = 1.00
+    Q_VEL_I = 0.01
+    Q_VEL_D = 0.10
+
     # make CSV file name from these params
     filename = '%04.f-%04.f_%3.3f-%3.3f-%3.3f-%3.3f.csv' % (ALTITUDE_START, ALTITUDE_TARGET, ALT_P, VEL_P, VEL_I, VEL_D)
     logfile = open(filename, 'w')
@@ -58,15 +63,24 @@ if __name__ == '__main__':
 
     pid = AltitudePidController(ALTITUDE_TARGET, ALT_P, VEL_P, VEL_I, VEL_D)
 
+    pidq = AltitudePidController(ALTITUDE_TARGET, Q_ALT_P, Q_VEL_P, Q_VEL_I, Q_VEL_D)
+
     quad = BigQuad()
 
-    quad.start((0,0,ALTITUDE_START), (0,0,0), airborne=True)
+    # NED!  
+    quad.start((0,0,-ALTITUDE_START), (0,0,0), airborne=True)
 
     while True:
 
         quad.update(DT)
 
         location, rotation, state, crashed = quad.getState()
+
+        qz = location[2]
+        angularVel, bodyAccel, inertialVel, quaternion = state
+        qdzdt = inertialVel[2]
+
+        print(qz, qdzdt)
 
         # If altitude has leveled off, halt
         if abs(z-zprev) < .0000001:
@@ -88,4 +102,4 @@ if __name__ == '__main__':
 
     logfile.close()
 
-    plot(filename)
+    #plot(filename)
