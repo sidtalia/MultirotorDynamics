@@ -39,24 +39,3 @@ class QuadXAP(Dynamics):
     def u4(o):
     
         return (o[0] + o[1]) - (o[2] + o[3])
-
-
-if __name__ == '__main__':
-
-
-    # Amir's calculations
-    b  = 5.30216718361085E-05,   
-    d  = 2.23656692806239E-06,   
-    m  = 16.47,                  
-    l  = 0.6,                    
-    Ix = 2,                      
-    Iy = 2,                      
-    Iz = 3,                      
-    Jr = 3.08013E-04,            
-
-    # estimated
-    maxrpm = 15000
-
-    quad = QuadXAP(b, d, m, l, Ix, Iy, Iz, Jr, maxrpm)
-
-    quad.start((0,0,0), (0,0,0))
