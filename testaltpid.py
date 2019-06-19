@@ -60,7 +60,11 @@ if __name__ == '__main__':
 
     quad = BigQuad()
 
+    quad.start((0,0,ALTITUDE_START), (0,0,0))
+
     while True:
+
+        quad.update(DT)
 
         # If altitude has leveled off, halt
         if abs(z-zprev) < .0000001:

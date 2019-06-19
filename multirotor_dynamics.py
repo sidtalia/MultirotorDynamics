@@ -45,7 +45,6 @@ class Dynamics(object):
      # Might want to allow G to vary based on altitude
     _G  = 9.80665 
 
-    
     def bodyZToInertial(bodyZ, rotation):
         '''
         Converts body frame to inertial frame using rotation angles
@@ -166,21 +165,21 @@ class Dynamics(object):
         '''
 
         # Initialize state
-        self.x[Dynamics._STATE_X]         = location[0]
-        self.x[Dynamics._STATE_X_DOT]     = 0
-        self.x[Dynamics._STATE_Y]         = location[1]
-        self.x[Dynamics._STATE_Y_DOT]     = 0
-        self.x[Dynamics._STATE_Z]         = location[2]
-        self.x[Dynamics._STATE_Z_DOT]     = 0
-        self.x[Dynamics._STATE_PHI]       = rotation[0]
-        self.x[Dynamics._STATE_PHI_DOT]   = 0
-        self.x[Dynamics._STATE_THETA]     = rotation[1]
-        self.x[Dynamics._STATE_THETA_DOT] = 0
-        self.x[Dynamics._STATE_PSI]       = rotation[2]
-        self.x[Dynamics._STATE_PSI_DOT]   = 0
+        self.x[self._STATE_X]         = location[0]
+        self.x[self._STATE_X_DOT]     = 0
+        self.x[self._STATE_Y]         = location[1]
+        self.x[self._STATE_Y_DOT]     = 0
+        self.x[self._STATE_Z]         = location[2]
+        self.x[self._STATE_Z_DOT]     = 0
+        self.x[self._STATE_PHI]       = rotation[0]
+        self.x[self._STATE_PHI_DOT]   = 0
+        self.x[self._STATE_THETA]     = rotation[1]
+        self.x[self._STATE_THETA_DOT] = 0
+        self.x[self._STATE_PSI]       = rotation[2]
+        self.x[self._STATE_PSI_DOT]   = 0
 
         # Initialize inertial frame acceleration in NED coordinates
-        self.inertialAccel = Dynamics.bodyZToInertial(-Dynamics._G, rotation)
+        self.inertialAccel = Dynamics.bodyZToInertial(-self._G, rotation)
 
         # We can start on the ground (default) or in the air
         self.airborne = airborne
@@ -199,7 +198,7 @@ class Dynamics(object):
         ned = Dynamics.bodyZToInertial(-self.U1/self.m, euler)
 
         # We're airborne once net downward acceleration goes below zero
-        netz = ned[2] + Dynamics.g
+        netz = ned[2] + self._G
         if not self.airborne:
             self.airborne = netz < 0
 
@@ -207,18 +206,18 @@ class Dynamics(object):
         if self.airborne:
 
             # Make some useful abbreviations
-            phidot = self.x[Dynamics._STATE_PHI_DOT]
-            thedot = self.x[Dynamics._STATE_THETA_DOT]
-            psidot = self.x[Dynamics._STATE_PSI_DOT]
+            phidot = self.x[self._STATE_PHI_DOT]
+            thedot = self.x[self._STATE_THETA_DOT]
+            psidot = self.x[self._STATE_PSI_DOT]
 
             dxdt = np.array([
 
                 # Equation 12: compute temporal first derivative of state.
-                self.x[Dynamics._STATE_X_DOT],  
+                self.x[self._STATE_X_DOT],  
                 ned[0],
-                self.x[Dynamics._STATE_Y_DOT],
+                self.x[self._STATE_Y_DOT],
                 ned[1],
-                self.x[Dynamics._STATE_Z_DOT],
+                self.x[self._STATE_Z_DOT],
                 netz,
                 phidot,
                 psidot*thedot*(self.Iy-self.Iz)/self.Ix - self.Jr/self.Ix*thedot*self.Omega + self.l/self.Ix*self.U2,
@@ -263,16 +262,16 @@ class Dynamics(object):
             crashed = True if crashed, False otherwise
         '''
         # Get most values directly from state vector
-        angularVel  = self.x[Dynamics._STATE_PHI_DOT:Dynamics._STATE_PHI_DOT+5:2]
-        inertialVel = self.x[Dynamics._STATE_X_DOT:Dynamics._STATE_X_DOT+5:2]
-        rotation    = self.x[Dynamics._STATE_PHI:Dynamics._STATE_PHI+5:2]
-        location    = self.x[Dynamics._STATE_X:Dynamics._STATE_X+5:2]
+        angularVel  = self.x[self._STATE_PHI_DOT:self._STATE_PHI_DOT+5:2]
+        inertialVel = self.x[self._STATE_X_DOT:self._STATE_X_DOT+5:2]
+        rotation    = self.x[self._STATE_PHI:self._STATE_PHI+5:2]
+        location    = self.x[self._STATE_X:self._STATE_X+5:2]
 
         # Convert inertial acceleration and velocity to body frame
-        bodyAccel = Dynamics.inertialToBody(self.inertialAccel, rotation)
+        bodyAccel = self.inertialToBody(self.inertialAccel, rotation)
 
         # Convert Euler angles to quaternion
-        quaternion = Dynamics.eulerToQuaternion(rotation)
+        quaternion = self.eulerToQuaternion(rotation)
 
         # Make pose and state tuples
         state = angularVel, bodyAccel, inertialVel, quaternion
