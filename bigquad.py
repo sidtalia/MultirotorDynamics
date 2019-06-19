@@ -26,4 +26,4 @@ class BigQuad(QuadXAP):
 
     def __init__(self):
 
-        BigQuad.__init__(self, 4, self.b, self.d, self.m, self.l, self.Ix, self.Iy, self.Iz, self.Jr, self.maxrpm)
+        QuadXAP.__init__(self, self.b, self.d, self.m, self.l, self.Ix, self.Iy, self.Iz, self.Jr, self.maxrpm)

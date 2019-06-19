@@ -58,6 +58,8 @@ if __name__ == '__main__':
 
     pid = AltitudePidController(ALTITUDE_TARGET, ALT_P, VEL_P, VEL_I, VEL_D)
 
+    quad = BigQuad()
+
     while True:
 
         # If altitude has leveled off, halt
